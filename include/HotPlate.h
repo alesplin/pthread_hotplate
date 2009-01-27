@@ -46,7 +46,14 @@
 /*
  * some type definitions
  */
+/* a BOOL for simplicity's sake */
 typedef int BOOL;
+
+/* our thread argument struct */
+typedef struct {
+    int iproc;
+    int nproc;
+} ThreadArg;
 
 /*
  * stuff we need

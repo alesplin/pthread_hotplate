@@ -11,9 +11,19 @@ DEBUG_FLAGS = -g
 DBG_OBJ = bin/debug/hp.o
 REL_OBJ = bin/release/hp.o
 EXE = bin/HotPlate
+HEADER = include/HotPlate.h
+SRC = src/HotPlate.c
 
-HotPlate: include/HotPlate.h src/HotPlate.c
-	$(CC) $(COMMON_FLAGS) $(RELEASE_FLAGS) -c src/HotPlate.c -o bin/hp.o
+HotPlate: $(HEADER) $(SRC)
+	$(CC) $(COMMON_FLAGS) $(RELEASE_FLAGS) -c $(SRC) -o $(REL_OBJ)
+	$(CC) $(COMMON_FLAGS) $(RELEASE_FLAGS) $(REL_OBJ) -o $(EXE)
+
+run: $(EXE)
+	bin/HotPlate
+
+debug: $(HEADER) $(SRC) clean
+	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) -c $(SRC) -o $(DBG_OBJ)
+	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) $(DBG_OBJ) -o $(EXE)
 
 # utilities to make sure directories exist and clean stuff...
 
