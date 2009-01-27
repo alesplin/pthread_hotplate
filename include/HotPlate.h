@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <omp.h>
+#include <pthread.h>
 #include <math.h>
 #include <string.h>
 
@@ -53,7 +53,6 @@ typedef int BOOL;
  */
 float *plate1;
 float *plate2;
-BOOL runOMP;
 int numThreads;
 
 /*

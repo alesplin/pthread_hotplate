@@ -6,7 +6,6 @@
 
 extern float *plate1;
 extern float *plate2;
-extern BOOL runOMP;
 extern int numThreads;
 
 int main(int argc, char *argv[]) {
@@ -22,14 +21,12 @@ int main(int argc, char *argv[]) {
 
     startTime = getTime();
     numThreads = 1;
-    runOMP = FALSE;
     if(argc > 1) {
         if(strcasestr(argv[1],NUM_THREADS_FLAG)) {
             printf("Processing desired number of threads...\n");
             char *numPtr = argv[1] + strlen(NUM_THREADS_FLAG);
             numThreads = atoi(numPtr);
             if(numThreads > 1) {
-                runOMP = TRUE;
             }
         }
     }
@@ -39,35 +36,32 @@ int main(int argc, char *argv[]) {
     plate1 = (float*) calloc(PLATE_AREA, sizeof(float));
     plate2 = (float*) calloc(PLATE_AREA, sizeof(float));
 
-    /* parallelize the initialization*/
-    omp_set_num_threads(numThreads);
-#pragma omp parallel private(y,x) shared(plate1,plate2)
-    {
-        /* initialize our starting plate */
-        for(y = 1; y < PLATE_SIZE - 1; y++) { /* iterate over the rows */
-            for(x = 1; x < PLATE_SIZE - 1; x++) { /* iterate over the columns */
-                plate1[LOC(x,y)] = WARM_START;
-                plate2[LOC(x,y)] = WARM_START;
-                /* printf("(%d,%d = %d)\t", x,y,LOC(x,y)); */
-            }
-            /*printf("\n");*/
-        }
+    /* parallelize the initialization TODO*/
 
-        /* initialize the edges */
-        for(x = 0; x < PLATE_SIZE; x++) {
-            /* do the bottom edge */
-            plate1[LOC(x,0)] = HOT_START;
-            plate2[LOC(x,0)] = HOT_START;
-            /*printf("Column %d in row 0\n", LOC(x,0));*/
-            /* do the left edge */
-            plate1[LOC(0,x)] = COLD_START;
-            plate2[LOC(0,x)] = COLD_START;
-            /*printf("Row %d in column 0\n", LOC(x,0));*/
-            /* do the right edge */
-            plate1[LOC(PLATE_SIZE-1,x)] = COLD_START;
-            plate2[LOC(PLATE_SIZE-1,x)] = COLD_START;
-            /*printf("Row %d in column %d\n", LOC(x,0),PLATE_SIZE-1);*/
+    /* initialize our starting plate */
+    for(y = 1; y < PLATE_SIZE - 1; y++) { /* iterate over the rows */
+        for(x = 1; x < PLATE_SIZE - 1; x++) { /* iterate over the columns */
+            plate1[LOC(x,y)] = WARM_START;
+            plate2[LOC(x,y)] = WARM_START;
+            /* printf("(%d,%d = %d)\t", x,y,LOC(x,y)); */
         }
+        /*printf("\n");*/
+    }
+
+    /* initialize the edges */
+    for(x = 0; x < PLATE_SIZE; x++) {
+        /* do the bottom edge */
+        plate1[LOC(x,0)] = HOT_START;
+        plate2[LOC(x,0)] = HOT_START;
+        /*printf("Column %d in row 0\n", LOC(x,0));*/
+        /* do the left edge */
+        plate1[LOC(0,x)] = COLD_START;
+        plate2[LOC(0,x)] = COLD_START;
+        /*printf("Row %d in column 0\n", LOC(x,0));*/
+        /* do the right edge */
+        plate1[LOC(PLATE_SIZE-1,x)] = COLD_START;
+        plate2[LOC(PLATE_SIZE-1,x)] = COLD_START;
+        /*printf("Row %d in column %d\n", LOC(x,0),PLATE_SIZE-1);*/
     }
 
     /* initialize our hot row */
@@ -135,47 +129,39 @@ BOOL updatePlate(float *curPlate,
 
     /*printf("Hello from %d\n", __LINE__);*/
     /* update the new plate with temps from the old plate */
-    omp_set_num_threads(numThreads);
-#pragma omp parallel private(threadID,x,y,me,neighborAvg) \
-    shared(plate1,plate2,isSteady,numThreads)
-    {
-        threadID = omp_get_thread_num();
-#pragma omp for private(x,y) schedule(static, numThreads)
-        for(y = 1; y < PLATE_SIZE - 1; y++) {
-            for(x = 1; x < PLATE_SIZE - 1; x++) {
-                if(!isFixed(x,y)) {
-                    newPlate[LOC(x,y)] = (curPlate[LEFT_LOC(x,y)]
-                            + curPlate[RIGHT_LOC(x,y)]
-                            + curPlate[LOWER_LOC(x,y)]
-                            + curPlate[UPPER_LOC(x,y)]
-                            + 4 * curPlate[LOC(x,y)] ) / 8;
-                }
+    for(y = 1; y < PLATE_SIZE - 1; y++) {
+        for(x = 1; x < PLATE_SIZE - 1; x++) {
+            if(!isFixed(x,y)) {
+                newPlate[LOC(x,y)] = (curPlate[LEFT_LOC(x,y)]
+                        + curPlate[RIGHT_LOC(x,y)]
+                        + curPlate[LOWER_LOC(x,y)]
+                        + curPlate[UPPER_LOC(x,y)]
+                        + 4 * curPlate[LOC(x,y)] ) / 8;
             }
         }
-        /*printf("Hello from %d\n", __LINE__);*/
-
-        /* check the new plate for steady state */
-#pragma omp for private(x,y) schedule(static, numThreads)
-        for(y = 1; y < PLATE_SIZE - 1; y++) {
-            for(x = 1; x < PLATE_SIZE - 1; x++) {
-                if(!isFixed(x,y)) {
-                    me = newPlate[LOC(x,y)];
-                    /*printf("Hello from %d\n", __LINE__);*/
-                    neighborAvg = (newPlate[LEFT_LOC(x,y)]
-                            + newPlate[RIGHT_LOC(x,y)]
-                            + newPlate[LOWER_LOC(x,y)]
-                            + newPlate[UPPER_LOC(x,y)])/4;
-                    /*printf("Hello from %d\n", __LINE__);*/
-                    if(fabsf(me - neighborAvg) >= STEADY_THRESHOLD) {
-                        /*printf("Hello from %d, (x,y)=(%d,%d)\n", __LINE__,x,y);*/
-                        isSteady = FALSE;
-                    }
-                    /*printf("Hello from %d\n", __LINE__);*/
-                }
-            }
-        }
-        /*printf("Hello from %d\n", __LINE__);*/
     }
+    /*printf("Hello from %d\n", __LINE__);*/
+
+    /* check the new plate for steady state */
+    for(y = 1; y < PLATE_SIZE - 1; y++) {
+        for(x = 1; x < PLATE_SIZE - 1; x++) {
+            if(!isFixed(x,y)) {
+                me = newPlate[LOC(x,y)];
+                /*printf("Hello from %d\n", __LINE__);*/
+                neighborAvg = (newPlate[LEFT_LOC(x,y)]
+                        + newPlate[RIGHT_LOC(x,y)]
+                        + newPlate[LOWER_LOC(x,y)]
+                        + newPlate[UPPER_LOC(x,y)])/4;
+                /*printf("Hello from %d\n", __LINE__);*/
+                if(fabsf(me - neighborAvg) >= STEADY_THRESHOLD) {
+                    /*printf("Hello from %d, (x,y)=(%d,%d)\n", __LINE__,x,y);*/
+                    isSteady = FALSE;
+                }
+                /*printf("Hello from %d\n", __LINE__);*/
+            }
+        }
+    }
+    /*printf("Hello from %d\n", __LINE__);*/
 
     return isSteady;
 }
