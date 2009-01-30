@@ -1,0 +1,4 @@
+MHotPlate	src/HotPlate.c	/^int main(int argc, char *argv[]) {$/
+getTime	src/HotPlate.c	/^double getTime() {$/
+isFixed	src/HotPlate.c	/^inline BOOL isFixed(int x, int y) {$/
+updatePlate	src/HotPlate.c	/^BOOL updatePlate(ThreadArg *arg) {$/

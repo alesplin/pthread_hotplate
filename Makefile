@@ -14,16 +14,43 @@ EXE = bin/HotPlate
 HEADER = include/HotPlate.h
 SRC = src/HotPlate.c
 
-HotPlate: $(HEADER) $(SRC)
+$(EXE): $(HEADER) $(SRC)
 	$(CC) $(COMMON_FLAGS) $(RELEASE_FLAGS) -c $(SRC) -o $(REL_OBJ)
 	$(CC) $(COMMON_FLAGS) $(RELEASE_FLAGS) $(REL_OBJ) -o $(EXE)
 
 run: $(EXE)
 	bin/HotPlate
 
+# run with 2 threads
+t2: $(EXE)
+	bin/HotPlate --nt=2
+
+# run with 4 threads
+t4: $(EXE)
+	bin/HotPlate --nt=4
+
+# run with 8 threads
+t8: $(EXE)
+	bin/HotPlate --nt=8
+
+# run with 16 threads
+t16: $(EXE)
+	bin/HotPlate --nt=16
+
+# run with 32 threads
+t32: $(EXE)
+	bin/HotPlate --nt=32
+
+# run with 64 threads
+t64: $(EXE)
+	bin/HotPlate --nt=64
+
 debug: $(HEADER) $(SRC) clean
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) -c $(SRC) -o $(DBG_OBJ)
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) $(DBG_OBJ) -o $(EXE)
+
+ctags: $(HEADER) $(SRC)
+	ctags -t -f tags $(SRC) 
 
 # utilities to make sure directories exist and clean stuff...
 
