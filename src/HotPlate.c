@@ -247,9 +247,13 @@ void* findSteadyState(void *arg) {
             if(numIterations % 100 == 0) {
                 printf("%d says numIterations is %d\n", iproc, numIterations);
             }
+            if(numIterations > 800) {
+                printf("we've got problems...\n");
+                exit(-1);
+            }
         }
         /* calculate the changes in our chunk of the plate */
-        printf("%d starting calcuations...\n", iproc);
+        printf("%d starting calcuations... %d\n", iproc,numIterations);
         for(y = start; y < end; y++) {
             for(x = 1; x < PLATE_SIZE; x++) {
                 if(!isFixed(x,y)) {
