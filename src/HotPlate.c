@@ -15,10 +15,11 @@ extern int nproc;
 extern unsigned long GoCalc;
 extern unsigned long GoCheck;
 /* counting "semaphore" */
-int calcWait;
-int checkWait;
+extern int calcWaitCount;
+extern int checkWaitCount;
 /* how to know if we're steady */
-unsigned long notSteady;
+extern unsigned int notSteady;
+extern int numIterations;
 
 int main(int argc, char *argv[]) {
     double startTime;
@@ -26,8 +27,7 @@ int main(int argc, char *argv[]) {
     double elapsedTime;
     int x;
     int y;
-    int numIterations = 0;
-    notSteady = PLATE_UNSTEADY_START;
+    numIterations = 0;
 
     startTime = getTime();
     nproc = 1;
@@ -45,6 +45,25 @@ int main(int argc, char *argv[]) {
     /* allocate our arrays on the heap */
     curPlate = (float*) calloc(PLATE_AREA, sizeof(float));
     newPlate = (float*) calloc(PLATE_AREA, sizeof(float));
+
+    /* initialize notSteady to fill all bits with 1 */
+    notSteady = 1;
+    int i;
+    for(i = 1; i < nproc; i++) {
+        notSteady <<= 1;
+        notSteady += 1;
+    }
+    printf("not steady 0x%x\n", notSteady);
+
+    /* set our counting "semaphores" to 0 initially */
+    calcWaitCount = 0;
+    checkWaitCount = 0;
+    swapWaitCount = 0;
+
+    /* set our barriers to 0 initially */
+    GoCalc = 0;
+    GoCheck = 0;
+    GoSwap = 0;
 
     /* parallelize the initialization TODO*/
 
@@ -103,10 +122,32 @@ int main(int argc, char *argv[]) {
     }
 
     int num;
+    pthread_t threads[nproc];
+    threadArgs = calloc(nproc, sizeof(ThreadArg));
     for(num = 0; num < nproc; num++) {
-        printf("make thread %d...\n", num);
+        printf("making thread %d...\n", num);
+        threadArgs[num].iproc = num;
+        threadArgs[num].nproc = nproc;
+        err = pthread_create(&threads[num], /* pthread_t */
+                &threadAttr,                /* thread attributes */
+                findSteadyState,            /* thread main loop */
+                &(threadArgs[num]));          /* argument struct */
+        if(err) {
+            printf("error %d returned on thread %d\n", err, num);
+        }
     }
 
+    /* free our attribute struct and wait for the workers to finish */
+    pthread_attr_destroy(&threadAttr);
+    void *returnStatus;
+    for(num = 0; num < nproc; num++) {
+        err = pthread_join(threads[num], &returnStatus);
+        if(err) {
+            printf("error %d joining thread %d\n", err, num);
+            exit(-1);
+        }
+        printf("joined thread %d with status %d\n", num, (int)returnStatus);
+    }
 
     /* finish up...*/
     endTime = getTime();
@@ -132,13 +173,15 @@ double getTime() {
  * update the current plate using the last one as reference
  */
 BOOL updatePlate(ThreadArg *arg) {
+    /*
     int x;
     int y;
     float me;
     float neighborAvg;
+    */
     BOOL isSteady = TRUE;
 
-    PRINT_LINE;
+    /*PRINT_LINE;*/
     /* update the new plate with temps from the old plate */
     /*
     for(y = 1; y < PLATE_SIZE - 1; y++) {
@@ -173,6 +216,132 @@ BOOL updatePlate(ThreadArg *arg) {
     */
 
     return isSteady;
+}
+
+/*
+ * find the steady state of the plate
+ */
+void* findSteadyState(void *arg) {
+    ThreadArg *myArg = arg;
+    int iproc = (*myArg).iproc;
+    int nproc = (*myArg).nproc;
+    BOOL isSteady;
+    int myBit;
+    int x;
+    int y;
+    float me;
+    float neighborAvg;
+    printf("thread %d checking in...\n", iproc);
+    /* figure out the rows that we start and end on */
+    int start = CHUNK_START(iproc,nproc);
+    int end = CHUNK_END(iproc,nproc);
+    /* figure out which bit we'll be watching in the barrier */
+    myBit = 1 << iproc;
+    printf("thread %d says my bit is 0x%04x\n", iproc,myBit);
+
+    /* work until everything is steady */
+    while(notSteady) {
+        /* thread 0 will keep track of our iteration count */
+        if(iproc == 0) {
+            numIterations++;
+            if(numIterations % 100 == 0) {
+                printf("%d says numIterations is %d\n", iproc, numIterations);
+            }
+        }
+        /* calculate the changes in our chunk of the plate */
+        printf("%d starting calcuations...\n", iproc);
+        for(y = start; y < end; y++) {
+            for(x = 1; x < PLATE_SIZE; x++) {
+                if(!isFixed(x,y)) {
+                    newPlate[LOC(x,y)] = (curPlate[LEFT_LOC(x,y)]
+                            + curPlate[RIGHT_LOC(x,y)]
+                            + curPlate[LOWER_LOC(x,y)]
+                            + curPlate[UPPER_LOC(x,y)]
+                            + 4 * curPlate[LOC(x,y)] ) / 8;
+                }
+            }
+        }
+        /* wait for everyone before we check steadiness */
+        checkWaitCount++;
+        printf("%d waiting to check...\n", iproc);
+        while((myBit & GoCheck) == 0) {
+            /* if I'm the last one in, tell everyone they can go */
+            if(checkWaitCount == nproc) {
+                int go = 1;
+                int i;
+                for(i = 1; i < nproc; i++) {
+                    go <<= 1;
+                    go += 1;
+                }
+                /* reset GoSwap and swapWaitCount to 0 so we wait after checking */
+                GoSwap = 0;
+                /*swapWaitCount = 0;*/
+                checkWaitCount = 0;
+                printf("telling everyone they can go check for steady...\n");
+                GoCheck = go;
+            }
+        }
+
+        /* check for steady state... */
+        isSteady = TRUE;
+        printf("%d starting check...\n", iproc);
+        for(y = start; y < end; y++) {
+            for(x = 1; x < PLATE_SIZE; x++) {
+                if(!isFixed(x,y)) {
+                    me = newPlate[LOC(x,y)];
+                    neighborAvg = (newPlate[LEFT_LOC(x,y)]
+                            + newPlate[RIGHT_LOC(x,y)]
+                            + newPlate[LOWER_LOC(x,y)]
+                            + newPlate[UPPER_LOC(x,y)])/4;
+                    if(fabsf(me - neighborAvg) >= STEADY_THRESHOLD) {
+                        isSteady = FALSE;
+                        break; /* no need to keep checking... */
+                    }
+                }
+            }
+            if(!isSteady) {
+                break; /* no need to keep checking */
+            }
+        }
+        /* if my chunk is steady, set my bit to 0 */
+        if(isSteady) {
+            notSteady ^= myBit;
+        }
+        /* otherwise, make sure my bit still indicates not steady */
+        else {
+            notSteady |= myBit;
+        }
+
+        /* wait for everyone before we swap plate pointers */
+        swapWaitCount++;
+        printf("%d waiting for the plate pointers to be swapped...\n", iproc);
+        while((myBit & GoSwap) == 0) {
+            /* if we're the last one here, swap the pointers, reset GoCheck to
+               0, and tell everyone they can go */
+            if(swapWaitCount == nproc) {
+                printf("swapping plate pointers...\n");
+                tPlate = curPlate;
+                curPlate = newPlate;
+                newPlate = tPlate;
+                int go = 1;
+                int i;
+                for(i = 1; i < nproc; i++) {
+                    go <<= 1;
+                    go += 1;
+                }
+                /* reset GoCheck and checkWaitCount to 0 so we wait
+                   after calculating */
+                GoCheck = 0;
+                /*checkWaitCount = 0;*/
+                swapWaitCount = 0;
+                printf("telling everyone they can go calculate...\n");
+                GoSwap = go;
+            }
+        }
+
+    } /* end of while notSteady loop */
+
+    pthread_exit(NULL);
 }
 
 /*

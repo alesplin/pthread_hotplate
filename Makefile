@@ -41,10 +41,6 @@ t16: $(EXE)
 t32: $(EXE)
 	bin/HotPlate --nt=32
 
-# run with 64 threads
-t64: $(EXE)
-	bin/HotPlate --nt=64
-
 debug: $(HEADER) $(SRC) clean
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) -c $(SRC) -o $(DBG_OBJ)
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) $(DBG_OBJ) -o $(EXE)

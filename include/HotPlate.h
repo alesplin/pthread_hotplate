@@ -58,6 +58,8 @@ typedef struct {
     int iproc;
     int nproc;
 } ThreadArg;
+/* array to store them */
+ThreadArg *threadArgs;
 
 /*
  * stuff we need
@@ -72,11 +74,16 @@ int nproc;
 /* linear barrier */
 unsigned long GoCalc;
 unsigned long GoCheck;
+unsigned long GoSwap;
 /* counting "semaphore" */
-int calcWait;
-int checkWait;
+int calcWaitCount;
+int checkWaitCount;
+int swapWaitCount;
+pthread_mutex_t checkMutex;
+pthread_mutex_t calcMutex;
 /* keep track of whether we're all steady yet... */
-unsigned long notSteady;
+unsigned int notSteady;
+int numIterations;
 
 /*
  * some utility functions
