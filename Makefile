@@ -4,7 +4,7 @@
 # aliases for compiler executable and release/debug flags
 CC = gcc-4.2
 COMMON_FLAGS = -Wall -pthread -Iinclude/
-RELEASE_FLAGS = #-O3
+RELEASE_FLAGS = -O3
 DEBUG_FLAGS = -g
 
 # aliases for files

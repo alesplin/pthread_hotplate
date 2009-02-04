@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     nproc = 1;
     if(argc > 1) {
         if(strcasestr(argv[1],NUM_THREADS_FLAG)) {
-            printf("Processing desired number of threads...\n");
+            /*printf("Processing desired number of threads...\n");*/
             char *numPtr = argv[1] + strlen(NUM_THREADS_FLAG);
             nproc = atoi(numPtr);
             if(nproc > 1) {
@@ -47,13 +47,13 @@ int main(int argc, char *argv[]) {
     printf("We'll be using %d threads...\n",nproc);
 
     /* allocate our arrays on the heap */
-    printf("allocating arrays of %d floats...\n", PLATE_AREA);
+    /*printf("allocating arrays of %d floats...\n", PLATE_AREA);*/
     curPlate = (float*) calloc(PLATE_AREA, sizeof(float));
     newPlate = (float*) calloc(PLATE_AREA, sizeof(float));
 
     /* initialize notSteady to fill all bits with 1 */
     maskToOnes(nproc, &notSteady);
-    printf("not steady 0x%x\n", notSteady);
+    /*printf("not steady 0x%x\n", notSteady);*/
 
     /* set our counting "semaphores" to 0 initially */
     calcWaitCount = 0;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     pthread_t threads[nproc];
     threadArgs = calloc(nproc, sizeof(ThreadArg));
     for(num = 0; num < nproc; num++) {
-        printf("making thread %d...\n", num);
+        /*printf("making thread %d...\n", num);*/
         threadArgs[num].iproc = num;
         threadArgs[num].nproc = nproc;
         err = pthread_create(&threads[num], /* pthread_t */
@@ -170,59 +170,6 @@ double getTime() {
 }
 
 /*
- * loop on our chunk of the plate until we're all steady
- */
-
-/*
- * update the current plate using the last one as reference
- */
-BOOL updatePlate(ThreadArg *arg) {
-    /*
-    int x;
-    int y;
-    float me;
-    float neighborAvg;
-    */
-    BOOL isSteady = TRUE;
-
-    /*PRINT_LINE;*/
-    /* update the new plate with temps from the old plate */
-    /*
-    for(y = 1; y < PLATE_SIZE - 1; y++) {
-        for(x = 1; x < PLATE_SIZE - 1; x++) {
-            if(!isFixed(x,y)) {
-                newPlate[LOC(x,y)] = (curPlate[LEFT_LOC(x,y)]
-                        + curPlate[RIGHT_LOC(x,y)]
-                        + curPlate[LOWER_LOC(x,y)]
-                        + curPlate[UPPER_LOC(x,y)]
-                        + 4 * curPlate[LOC(x,y)] ) / 8;
-            }
-        }
-    }
-    */
-
-    /* check the new plate for steady state */
-    /*
-    for(y = 1; y < PLATE_SIZE - 1; y++) {
-        for(x = 1; x < PLATE_SIZE - 1; x++) {
-            if(!isFixed(x,y)) {
-                me = newPlate[LOC(x,y)];
-                neighborAvg = (newPlate[LEFT_LOC(x,y)]
-                        + newPlate[RIGHT_LOC(x,y)]
-                        + newPlate[LOWER_LOC(x,y)]
-                        + newPlate[UPPER_LOC(x,y)])/4;
-                if(fabsf(me - neighborAvg) >= STEADY_THRESHOLD) {
-                    isSteady = FALSE;
-                }
-            }
-        }
-    }
-    */
-
-    return isSteady;
-}
-
-/*
  * find the steady state of the plate
  */
 void* findSteadyState(void *arg) {
@@ -236,7 +183,7 @@ void* findSteadyState(void *arg) {
     float me;
     float neighborAvg;
     int numIterations = 0;
-    printf("thread %d checking in...\n", iproc);
+    /*printf("thread %d checking in...\n", iproc);*/
     /* figure out the rows that we start and end on */
     int start = CHUNK_START(iproc,nproc);
     int end = CHUNK_END(iproc,nproc);
@@ -245,8 +192,8 @@ void* findSteadyState(void *arg) {
     }
     /* figure out which bit we'll be watching in the barrier */
     myBit = 1 << iproc;
-    printf("thread %d says my bit is 0x%04x\n", iproc,myBit);
-    printf("thread %d says my chunk starts at %d and ends at %d\n", iproc,start, end);
+    /*printf("thread %d says my bit is 0x%04x\n", iproc,myBit);*/
+    /*printf("thread %d says my chunk starts at %d and ends at %d\n", iproc,start, end);*/
 
     /* work until everything is steady */
     while(notSteady) {
@@ -279,6 +226,7 @@ void* findSteadyState(void *arg) {
         /* lock to increment and check for letting everyone go */
         pthread_mutex_lock(&checkLock);
         checkWaitCount++;
+        pthread_mutex_unlock(&checkLock);
         /*printf("%d waiting to check my chunk...\n", iproc);*/
         if(checkWaitCount == nproc) {
             checkWaitCount = 0;
@@ -287,7 +235,6 @@ void* findSteadyState(void *arg) {
             maskToOnes(nproc, &GoCheck);
             /*printf("GoCheck now 0x%04x...\n", GoCheck);*/
         }
-        pthread_mutex_unlock(&checkLock);
         /* end locked section */
         while((GoCheck & myBit) == 0) {
             // nothing to see here...
@@ -300,7 +247,6 @@ void* findSteadyState(void *arg) {
         for(y = start; y < end; y++) {
             for(x = 1; x < PLATE_SIZE - 1; x++) {
                 if(!isFixed(x,y)) {
-                    /*printf("at (x,y)=(%d,%d):\n    left_loc=%d,    right_loc=%d,    lower_loc=%d,    upper_loc=%d\n",x,y, LEFT_LOC(x,y),RIGHT_LOC(x,y),LOWER_LOC(x,y),UPPER_LOC(x,y));*/
                     me = newPlate[LOC(x,y)];
                     neighborAvg = (newPlate[LEFT_LOC(x,y)]
                             + newPlate[RIGHT_LOC(x,y)]
@@ -308,38 +254,36 @@ void* findSteadyState(void *arg) {
                             + newPlate[UPPER_LOC(x,y)])/4;
                     if(fabsf(me - neighborAvg) >= STEADY_THRESHOLD) {
                         isSteady = FALSE;
-                        /*break;*/
                     }
                 }
             }
-            /*
             if(!isSteady) {
                 break; 
             }
-            */
         }
 
         /* if my chunk is steady, set my bit to 0 */
         if(isSteady) {
-            pthread_mutex_lock(&steadyLock);
+            /*pthread_mutex_lock(&steadyLock);*/
             /*PRINT_LINE;*/
             /*printf("%d is steady...\n", iproc);*/
             notSteady ^= myBit;
             /*printf("%d set my notSteady bit to 0 (0x%04x)\n", iproc, notSteady);*/
-            pthread_mutex_unlock(&steadyLock);
+            /*pthread_mutex_unlock(&steadyLock);*/
         }
         /* otherwise, make sure my bit still indicates not steady */
         else {
-            pthread_mutex_lock(&steadyLock);
+            /*pthread_mutex_lock(&steadyLock);*/
             /*printf("%d is not steady...\n", iproc);*/
             notSteady |= myBit;
             /*printf("%d set my notSteady bit to 1 (0x%04x)\n", iproc, notSteady);*/
-            pthread_mutex_unlock(&steadyLock);
+            /*pthread_mutex_unlock(&steadyLock);*/
         }
 
         /* wait for everyone before we swap plate pointers */
         pthread_mutex_lock(&calcLock);
         calcWaitCount++;
+        pthread_mutex_unlock(&calcLock);
         /*printf("%d waiting for the plate pointers to be swapped...\n", iproc);*/
         if(calcWaitCount == nproc) {
             /* reset count for next time */
@@ -355,7 +299,6 @@ void* findSteadyState(void *arg) {
             maskToOnes(nproc, &GoCalc);
             /*printf("GoCalc now 0x%04x...\n", GoCalc);*/
         }
-        pthread_mutex_unlock(&calcLock);
 
         while((myBit & GoCalc) == 0) {
             // nothing to see here...
