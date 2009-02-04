@@ -4,7 +4,7 @@
 # aliases for compiler executable and release/debug flags
 CC = gcc-4.2
 COMMON_FLAGS = -Wall -pthread -Iinclude/
-RELEASE_FLAGS = -O3
+RELEASE_FLAGS = #-O3
 DEBUG_FLAGS = -g
 
 # aliases for files
@@ -46,7 +46,7 @@ debug: $(HEADER) $(SRC) clean
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) $(DBG_OBJ) -o $(EXE)
 
 ctags: $(HEADER) $(SRC)
-	ctags -t -f tags $(SRC) 
+	ctags -t -f tags $(SRC) $(HEADER)
 
 # utilities to make sure directories exist and clean stuff...
 

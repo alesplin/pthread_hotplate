@@ -24,7 +24,7 @@
 #define TRUE 1
 #define FALSE 0
 #define NUM_THREADS_FLAG "--nt="
-#define PRINT_LINE ( printf("Line %d\n", __LINE__) )
+#define PRINT_LINE ( printf("Thread %d, at line %d\n", iproc, __LINE__) )
 
 /* magic numbers for the fixed hot dot and row */
 #define DOT_X 199 /* row 200 */
@@ -34,14 +34,15 @@
 
 /* macros for plate positioning */
 #define LOC(x,y) ( y*PLATE_SIZE+x )
-#define LEFT_LOC(x,y) ( y*PLATE_SIZE+x-1 )
-#define RIGHT_LOC(x,y) ( y*PLATE_SIZE+x+1)
-#define LOWER_LOC(x,y) ( (y-1)*PLATE_SIZE+x )
-#define UPPER_LOC(x,y) ( (y+1)*PLATE_SIZE+x )
+#define LEFT_LOC(x,y) ( (y*PLATE_SIZE)+(x-1) )
+#define RIGHT_LOC(x,y) ( (y*PLATE_SIZE)+(x+1))
+#define LOWER_LOC(x,y) ( ((y-1)*(PLATE_SIZE))+x ) /*)*/
+#define UPPER_LOC(x,y) ( ((y+1)*(PLATE_SIZE))+x ) /*)*/
 
 /* macros for chunk dividing in OMP */
-#define CHUNK_START(x,y) ( (x==0)?1:((PLATE_SIZE/y)*x-1) )
-#define CHUNK_END(x,y) ( (x==0)?(PLATE_SIZE/y):((PLATE_SIZE/y)*x) )
+#define CHUNK_START(iproc,nproc) ( (iproc==0)?1:((PLATE_SIZE/nproc)*(iproc)) )
+/*#define CHUNK_END(iproc,nproc) (iproc==0)?(PLATE_SIZE/nproc):((iproc==(nproc-1))?PLATE_SIZE-1:((PLATE_SIZE/nproc)*(iproc+1)))*/
+#define CHUNK_END(iproc,nproc) ( (iproc==0)?:(iproc==(nproc-1))?(PLATE_SIZE/nproc):((PLATE_SIZE/nproc)*(iproc+1)) )
 
 /* macros for steady and not steady */
 #define PLATE_UNSTEADY_START ULONG_MAX
@@ -72,9 +73,12 @@ float *tPlate;
 /* thread control */
 int nproc;
 /* linear barrier */
-unsigned long GoCalc;
-unsigned long GoCheck;
-unsigned long GoSwap;
+volatile unsigned int GoCalc;
+volatile unsigned int GoCheck;
+/* mutexes */
+pthread_mutex_t checkLock;
+pthread_mutex_t steadyLock;
+pthread_mutex_t calcLock;
 /* counting "semaphore" */
 int calcWaitCount;
 int checkWaitCount;
@@ -83,7 +87,7 @@ pthread_mutex_t checkMutex;
 pthread_mutex_t calcMutex;
 /* keep track of whether we're all steady yet... */
 unsigned int notSteady;
-int numIterations;
+int finalIterations;
 
 /*
  * some utility functions
@@ -91,5 +95,6 @@ int numIterations;
 double getTime();
 BOOL updatePlate(ThreadArg *arg);
 void* findSteadyState(void *arg);
+void maskToOnes(int nproc, volatile unsigned int *mask);
 inline BOOL isFixed(int x, int y);
 

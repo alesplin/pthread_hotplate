@@ -1,4 +1,14 @@
+BOOL	include/HotPlate.h	/^typedef int BOOL;$/
+CHUNK_END	include/HotPlate.h	/^#define CHUNK_END(x,y) ( (x==0)?(PLATE_SIZE\/y):((/
+CHUNK_START	include/HotPlate.h	/^#define CHUNK_START(x,y) ( (x==0)?1:((PLATE_SIZE\//
+LEFT_LOC	include/HotPlate.h	/^#define LEFT_LOC(x,y) ( y*PLATE_SIZE+x-1 )$/
+LOC	include/HotPlate.h	/^#define LOC(x,y) ( y*PLATE_SIZE+x )$/
+LOWER_LOC	include/HotPlate.h	/^#define LOWER_LOC(x,y) ( (y-1)*PLATE_SIZE+x )$/
 MHotPlate	src/HotPlate.c	/^int main(int argc, char *argv[]) {$/
+RIGHT_LOC	include/HotPlate.h	/^#define RIGHT_LOC(x,y) ( y*PLATE_SIZE+x+1)$/
+ThreadArg	include/HotPlate.h	/^} ThreadArg;$/
+UPPER_LOC	include/HotPlate.h	/^#define UPPER_LOC(x,y) ( (y+1)*PLATE_SIZE+x )$/
+findSteadyState	src/HotPlate.c	/^void* findSteadyState(void *arg) {$/
 getTime	src/HotPlate.c	/^double getTime() {$/
 isFixed	src/HotPlate.c	/^inline BOOL isFixed(int x, int y) {$/
 updatePlate	src/HotPlate.c	/^BOOL updatePlate(ThreadArg *arg) {$/
