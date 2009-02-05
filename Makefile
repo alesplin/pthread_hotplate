@@ -4,7 +4,7 @@
 # aliases for compiler executable and release/debug flags
 CC = gcc-4.2
 COMMON_FLAGS = -Wall -pthread -Iinclude/
-RELEASE_FLAGS = -O3
+RELEASE_FLAGS = -O3#-funroll-all-loops
 DEBUG_FLAGS = -g
 
 # aliases for files
@@ -14,7 +14,7 @@ EXE = bin/HotPlate
 HEADER = include/HotPlate.h
 SRC = src/HotPlate.c
 
-$(EXE): $(HEADER) $(SRC)
+$(EXE): $(HEADER) $(SRC) Makefile
 	$(CC) $(COMMON_FLAGS) $(RELEASE_FLAGS) -c $(SRC) -o $(REL_OBJ)
 	$(CC) $(COMMON_FLAGS) $(RELEASE_FLAGS) $(REL_OBJ) -o $(EXE)
 
@@ -40,6 +40,9 @@ t16: $(EXE)
 # run with 32 threads
 t32: $(EXE)
 	bin/HotPlate --nt=32
+
+tarball: clean
+	tar -cvzf pthread_hotplate.tgz --exclude "pthread_hotplate/.git*" *
 
 debug: $(HEADER) $(SRC) clean
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) -c $(SRC) -o $(DBG_OBJ)
