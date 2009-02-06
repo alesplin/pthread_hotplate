@@ -44,6 +44,9 @@ t32: $(EXE)
 tarball: clean
 	tar -cvzf pthread_hotplate.tgz --exclude "pthread_hotplate/.git*" *
 
+upload: tarball
+	scp pthread_hotplate.tgz ae227@marylou4.et.byu.edu:~/pthread_hotplate/
+
 debug: $(HEADER) $(SRC) clean
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) -c $(SRC) -o $(DBG_OBJ)
 	$(CC) $(COMMON_FLAGS) $(DEBUG_FLAGS) $(DBG_OBJ) -o $(EXE)

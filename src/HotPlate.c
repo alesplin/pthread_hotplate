@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
             printf("error %d joining thread %d\n", err, num);
             exit(-1);
         }
-        printf("joined thread %d with status %d\n", num, (int)returnStatus);
+        /*printf("joined thread %d with status %d\n", num, (int)returnStatus);*/
     }
 
     /* finish up...*/
@@ -226,7 +226,6 @@ void* findSteadyState(void *arg) {
         /* lock to increment and check for letting everyone go */
         pthread_mutex_lock(&checkLock);
         checkWaitCount++;
-        pthread_mutex_unlock(&checkLock);
         /*printf("%d waiting to check my chunk...\n", iproc);*/
         if(checkWaitCount == nproc) {
             checkWaitCount = 0;
@@ -235,6 +234,7 @@ void* findSteadyState(void *arg) {
             maskToOnes(nproc, &GoCheck);
             /*printf("GoCheck now 0x%04x...\n", GoCheck);*/
         }
+        pthread_mutex_unlock(&checkLock);
         /* end locked section */
         while((GoCheck & myBit) == 0) {
             // nothing to see here...
@@ -264,26 +264,25 @@ void* findSteadyState(void *arg) {
 
         /* if my chunk is steady, set my bit to 0 */
         if(isSteady) {
-            /*pthread_mutex_lock(&steadyLock);*/
+            pthread_mutex_lock(&steadyLock);
             /*PRINT_LINE;*/
             /*printf("%d is steady...\n", iproc);*/
             notSteady ^= myBit;
             /*printf("%d set my notSteady bit to 0 (0x%04x)\n", iproc, notSteady);*/
-            /*pthread_mutex_unlock(&steadyLock);*/
+            pthread_mutex_unlock(&steadyLock);
         }
         /* otherwise, make sure my bit still indicates not steady */
         else {
-            /*pthread_mutex_lock(&steadyLock);*/
+            pthread_mutex_lock(&steadyLock);
             /*printf("%d is not steady...\n", iproc);*/
             notSteady |= myBit;
             /*printf("%d set my notSteady bit to 1 (0x%04x)\n", iproc, notSteady);*/
-            /*pthread_mutex_unlock(&steadyLock);*/
+            pthread_mutex_unlock(&steadyLock);
         }
 
         /* wait for everyone before we swap plate pointers */
         pthread_mutex_lock(&calcLock);
         calcWaitCount++;
-        pthread_mutex_unlock(&calcLock);
         /*printf("%d waiting for the plate pointers to be swapped...\n", iproc);*/
         if(calcWaitCount == nproc) {
             /* reset count for next time */
@@ -299,6 +298,7 @@ void* findSteadyState(void *arg) {
             maskToOnes(nproc, &GoCalc);
             /*printf("GoCalc now 0x%04x...\n", GoCalc);*/
         }
+        pthread_mutex_unlock(&calcLock);
 
         while((myBit & GoCalc) == 0) {
             // nothing to see here...
