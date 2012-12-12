@@ -36,12 +36,11 @@
 #define LOC(x,y) ( y*PLATE_SIZE+x )
 #define LEFT_LOC(x,y) ( (y*PLATE_SIZE)+(x-1) )
 #define RIGHT_LOC(x,y) ( (y*PLATE_SIZE)+(x+1))
-#define LOWER_LOC(x,y) ( ((y-1)*(PLATE_SIZE))+x ) /*)*/
-#define UPPER_LOC(x,y) ( ((y+1)*(PLATE_SIZE))+x ) /*)*/
+#define LOWER_LOC(x,y) ( ((y-1)*(PLATE_SIZE))+x )
+#define UPPER_LOC(x,y) ( ((y+1)*(PLATE_SIZE))+x )
 
 /* macros for chunk dividing in OMP */
 #define CHUNK_START(iproc,nproc) ( (iproc==0)?1:((PLATE_SIZE/nproc)*(iproc)) )
-/*#define CHUNK_END(iproc,nproc) (iproc==0)?(PLATE_SIZE/nproc):((iproc==(nproc-1))?PLATE_SIZE-1:((PLATE_SIZE/nproc)*(iproc+1)))*/
 #define CHUNK_END(iproc,nproc) ( (iproc==0)?:(iproc==(nproc-1))?(PLATE_SIZE/nproc):((PLATE_SIZE/nproc)*(iproc+1)) )
 
 /* macros for steady and not steady */

@@ -2,8 +2,9 @@
 #
 
 # aliases for compiler executable and release/debug flags
-CC = gcc-4.2
-COMMON_FLAGS = -Wall -pthread -Iinclude/
+#CC = gcc-4.2
+CC = clang
+COMMON_FLAGS = -Wall -Iinclude/
 RELEASE_FLAGS = -O3#-funroll-all-loops
 DEBUG_FLAGS = -g
 
