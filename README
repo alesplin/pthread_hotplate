@@ -4,3 +4,6 @@ pthread_hotplate
 A Pthreads implementation of the hot-plate problem.
 
 I created this implementation during the parallel processing class I took at BYU.
+
+The plots directory is of interest only to me, unless anyone else is curious
+about the results of my testing on the supercomputer (MaryLou 4).
