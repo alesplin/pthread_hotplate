@@ -1,0 +1,6 @@
+pthread_hotplate
+================
+
+A Pthreads implementation of the hot-plate problem.
+
+I created this implementation during the parallel processing class I took at BYU.
